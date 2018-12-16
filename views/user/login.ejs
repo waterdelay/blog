@@ -46,5 +46,27 @@
 
   <script src="/node_modules/jquery/dist/jquery.min.js"></script>
 </body>
-
+  <script>
+    $(function(){
+      $("#form").on("submit",function(){
+        $.ajax({
+          url:"/login",
+          data:$("#form").serialize(),
+          type:"post",
+          dataType:"json",
+          success:function(result){
+            // console.log(result)
+            alert(result.msg)
+            location.href="/"
+          },
+          error:function(err){
+            // console.log(err)
+            alert(err.responseJSON.msg)
+          }
+        })
+        return false
+      })
+      
+    })
+  </script>
 </html>

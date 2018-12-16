@@ -1,12 +1,15 @@
-const express =require ("express")
+const express = require("express")
 
-const cors =require("cors")
+const cors = require("cors")
 
-const bodyParser =require("body-parser")
-const app =express()
+const bodyParser = require("body-parser")
+
+const moment = require("moment")
+
+const app = express()
 
 //导入数据库
-const conn=require("./mysql.js")
+const conn = require("./mysql.js")
 
 // 开启CORS
 app.use(cors())
@@ -21,39 +24,60 @@ app.use('/node_modules', express.static('./node_modules'))
 // app.use("./views",express.static("./views`"))
 
 //调用模板
-app.set('view engine',"ejs")
+app.set('view engine', "ejs")
 
 // 设置模板存放路径  如果不设置 默认就在views目录
 // app.set('views', './views')
 
-app.get("/",(req,res)=>{
-    res.render("index",{})
+app.get("/", (req, res) => {
+    res.render("index", {})
 })
 //监控http://127.0.0.1:50/register的get请求
-app.get("/register",(req,res)=>{
+app.get("/register", (req, res) => {
     // console.log(req.query)
-    res.render("user/register",{})
+    res.render("user/register", {})
 })
 //监控http://127.0.0.1:50/register的post请求
-app.post("/register",(req,res)=>{
-    console.log(req.body)
-    let usersInfo=req.body
+app.post("/register", (req, res) => {
+    // console.log(req.body)
+    let usersInfo = req.body
     // 1.表单校验
-    if(!usersInfo.username.trim()||!usersInfo.password.trim()||!usersInfo.nickname.trim()) return res.status(400).send({status:400,msg:"请输入正确的格式"})
+    if (!usersInfo.username.trim() || !usersInfo.password.trim() || !usersInfo.nickname.trim()) return res.status(400).send({ status: 400, msg: "请输入正确的格式" })
 
     // 2.查重
-    const repeatSql="select count(*) as count from users where username = ?"
-    conn.query(repeatSql,usersInfo.username,(err,result)=>{
+    const repeatSql = "select count(*) as count from users where username = ?"
+    conn.query(repeatSql, usersInfo.username, (err, result) => {
         // console.log(err)
-        if(err) return res.status(500).send({status:500,msg:"查重失败,请重试"})
-        if(result[0].count !==0) return res.status(400).send({ status: 400, msg: '用户名重复!请重试!' })
+        if (err) return res.status(500).send({ status: 500, msg: "查重失败,请重试" })
+        if (result[0].count !== 0) return res.status(400).send({ status: 400, msg: '用户名重复!请重试!' })
     })
-    
+
     // 3.能到此处 说明可以注册
     // 添加ctime字段
-    usersInfo.ctime= moment().format('YYYY-MM-DD HH:mm:ss')
+    usersInfo.ctime = moment().format('YYYY-MM-DD HH:mm:ss')
+    //添加sql语句
+    const registerSql = "insert into users set?"
+    conn.query(registerSql, usersInfo, (err, result) => {
+        if (err) return res.status(500).send({ status: 500, msg: "注册失败,请重试" })
+        res.send({ status: 200, msg: "注册成功" })
+    })
+})
+//注册成功  开始写登录页面
+app.get("/login", (req, res) => {
+    res.render("./user/login", {})
+})
+//开始写登录逻辑
+app.post("/login", (req, res) => {
+    //   console.log(req.body)
+    const loginSql = "select * from users where username = ? and password = ?"
+    conn.query(loginSql, [req.body.username, req.body.password], (err, result) => {
+        //    console.log(result)
+        if (err || result.length == 0) return res.status(400).send({ status: 400, msg: "用户名或密码错误,请重试!" })
+        res.send({ status: 200, msg: "登录成功" })
+    })
 })
 
-app.listen(50,"127.0.0.1",()=>{
+
+app.listen(50, "127.0.0.1", () => {
     console.log("server running at http://127.0.0.1:50")
 })
