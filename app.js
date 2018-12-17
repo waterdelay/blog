@@ -4,14 +4,24 @@ const cors = require("cors")
 
 const bodyParser = require("body-parser")
 
-const moment = require("moment")
+const fs = require("fs")
+
+const path = require("path")
+
+//引用session
+const session=require("express-session")
 
 const app = express()
 
-//导入数据库
-const conn = require("./mysql.js")
+//注册session的中间件
+app.use(session({
+    secret: 'keyboard cat',
+    resave: false,
+    saveUninitialized: true,
+    // 如果不设置过期时间  默认 关闭浏览器即过期, 无法存储有效的cookie
+}))
 
-// 开启CORS
+// 开启CORS  解决跨越的问题
 app.use(cors())
 
 // 注册了一个中间件, 用于解析用户提交的表单数据
@@ -29,52 +39,31 @@ app.set('view engine', "ejs")
 // 设置模板存放路径  如果不设置 默认就在views目录
 // app.set('views', './views')
 
-app.get("/", (req, res) => {
-    res.render("index", {})
-})
-//监控http://127.0.0.1:50/register的get请求
-app.get("/register", (req, res) => {
-    // console.log(req.query)
-    res.render("user/register", {})
-})
-//监控http://127.0.0.1:50/register的post请求
-app.post("/register", (req, res) => {
-    // console.log(req.body)
-    let usersInfo = req.body
-    // 1.表单校验
-    if (!usersInfo.username.trim() || !usersInfo.password.trim() || !usersInfo.nickname.trim()) return res.status(400).send({ status: 400, msg: "请输入正确的格式" })
+// 注册路由  分发路由后一点要用中间件注册路由
+// const indexRouter = require('./routes/index')
+// app.use(indexRouter)
 
-    // 2.查重
-    const repeatSql = "select count(*) as count from users where username = ?"
-    conn.query(repeatSql, usersInfo.username, (err, result) => {
-        // console.log(err)
-        if (err) return res.status(500).send({ status: 500, msg: "查重失败,请重试" })
-        if (result[0].count !== 0) return res.status(400).send({ status: 400, msg: '用户名重复!请重试!' })
+// app.use(require('./routes/index'))
+// app.use(require('./routes/user'))
+
+// 使用fs模块读取routes目录下所有的文件名
+fs.readdir("./routers", (err, files) => {
+    // console.log(files)
+    if (err) return console.log(err.message)
+
+    files.forEach(file => {
+        // console.log(file)
+        // 相对路径引入
+        // console.log('./routes/' + filename)
+        // app.use(require('./routes/' + filename))
+
+        // 绝对路径引入
+        // let 和 const 都有块级作用域
+        const filePath = (path.join(__dirname, "./routers/" + file))
+        // console.log(filePath)
+        app.use(require(filePath))
     })
 
-    // 3.能到此处 说明可以注册
-    // 添加ctime字段
-    usersInfo.ctime = moment().format('YYYY-MM-DD HH:mm:ss')
-    //添加sql语句
-    const registerSql = "insert into users set?"
-    conn.query(registerSql, usersInfo, (err, result) => {
-        if (err) return res.status(500).send({ status: 500, msg: "注册失败,请重试" })
-        res.send({ status: 200, msg: "注册成功" })
-    })
-})
-//注册成功  开始写登录页面
-app.get("/login", (req, res) => {
-    res.render("./user/login", {})
-})
-//开始写登录逻辑
-app.post("/login", (req, res) => {
-    //   console.log(req.body)
-    const loginSql = "select * from users where username = ? and password = ?"
-    conn.query(loginSql, [req.body.username, req.body.password], (err, result) => {
-        //    console.log(result)
-        if (err || result.length == 0) return res.status(400).send({ status: 400, msg: "用户名或密码错误,请重试!" })
-        res.send({ status: 200, msg: "登录成功" })
-    })
 })
 
 
