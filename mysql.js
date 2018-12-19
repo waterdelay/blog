@@ -5,7 +5,9 @@ const conn = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: 'root',
-    database: 'blog'
+    database: 'blog',
+    //这是开启可以查询多条sql语句
+    multipleStatements: true
 })
 
 //曝光
