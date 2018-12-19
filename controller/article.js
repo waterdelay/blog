@@ -56,7 +56,41 @@ module.exports = {
         userInfo: req.session.userInfo,
         articleInfo: result[0]
       })
-      console.log(result)
+      // console.log(result)
+    })
+  },
+  getArticleEditHandler(req,res){
+    // 如果只做登录校验是不严谨的
+    // 应该加上作者的校验
+    if (!req.session.isLogin) return res.redirect('/')
+    // console.log(req.params.id)
+    const editArticleId=parseInt(req.params.id)
+    const editArticleSql="select * from article where id =?"
+    conn.query(editArticleSql,editArticleId,(err,result)=>{
+      // console.log(result)
+      if(err ||result.length!=1) return res.redirect('/')
+      // 权限的控制: 如果当前登录的用户ID和作者ID不匹配 也不能渲染
+      // console.log(req.session.userInfo)
+      if(req.session.userInfo.id!=result[0].author_id) return res.redirect('/')
+      res.render('article/edit',{
+        userInfo:req.session.userInfo,
+        isLogin:req.session.isLogin,
+        articleInfo:result[0]
+      })
+    })
+  },
+  postArticleEditHandler(req,res){
+    //首先进行登录验证
+    // console.log(req.body)
+    // console.log(req.params.id)
+    // 首先得跟新下时间
+    req.body.ctime=moment().format("YYYY-MM-DD HH:mm:ss")
+    conn.query("update article set?where id =?",[req.body,req.params.id],(err,result)=>{
+      // console.log(result)
+      if(err||result.affectedRows!=1) return res.status(500).send({
+        status:500,msg:"文章编辑失败!!!"
+      })
+      res.send({status:200,msg:"文章编辑成功!"})
     })
   }
 }
